@@ -252,7 +252,7 @@ class DB:
 
     def delete_all(self): #удаление бд
         self.c.execute('''DROP TABLE finance''')
-        #self.a.execute('''DROP TABLE account''')
+        self.a.execute('''DROP TABLE account''')
 
     def insert_account(self, name, money): #добавление данных
         self.a.execute('''INSERT INTO account(name, money) VALUES (?, ?)''',
