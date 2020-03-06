@@ -6,7 +6,7 @@ from const import COLORS
 
 class Main(tk.Frame): #конструктор класса
     def __init__(self, root):
-        # super().__init__(root)
+        super().__init__(root)
         self.init_main()
         self.db = db
         self.view_records()
