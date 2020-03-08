@@ -33,10 +33,13 @@ class Main(tk.Frame): #конструктор класса
         self.stats_field = tk.Canvas(bg='#d7d8e0',width=650)
         self.stats_field.pack()
 
-    def records(self, description, costs): #ввод и отображение данных о тратах на главном окне
-        self.db.insert_data(description, costs)
-        self.view_records()
-        self.view_state()
+    def records(self, description, costs):  # ввод и отображение данных о тратах на главном окне
+        if description == '' or description == " ":
+            pass
+        else:
+            self.db.insert_data(description, costs)
+            self.view_records()
+            self.view_state()
 
     def delete_record(self, search): #удаление данных о тратах с главного окна
         self.db.delete_data(search)
@@ -192,12 +195,6 @@ class Account(tk.Toplevel):
         self.acc_balance = tk.Entry(self)
         self.acc_balance.place(x=263,y=350)
 
-        self.name_delete = tk.Entry(self)
-        self.name_delete.place(x=263,y=370)
-
-        self.delete_descrip = tk.Label(self,text="удалить счет")
-        self.delete_descrip.place(x=150,y=370)
-
         self.acc_balance_descrip = tk.Label(self, text='баланс счета')
         self.acc_balance_descrip.place(x=150,y=350)
 
@@ -211,20 +208,25 @@ class Account(tk.Toplevel):
         btn_add_acc.place(x=445,y=420)
 
         btn_delete_acc = ttk.Button(self, text='удалить')
-        btn_delete_acc.bind('<Button-1>', lambda event: self.delete_account(self.name_delete.get()))
+        btn_delete_acc.bind('<Button-1>', lambda event: self.delete_account())
         btn_delete_acc.place(x=525, y=420)
 
-    def acc(self,name, money): #добавить счет в бд
-        self.db.insert_account(name, money)
-        self.view_acc_data()
+    def acc(self, name, money):  # добавить счет в бд
+        if name == '' or name == " ":
+            pass
+        else:
+            self.db.insert_account(name, money)
+            self.view_acc_data()
 
     def view_acc_data(self):  # отрисовка счетов
         self.db.a.execute('''SELECT * FROM account''')
         [self.tree.delete(i) for i in self.tree.get_children()]
         [self.tree.insert('', 'end', values=row) for row in self.db.a.fetchall()]
 
-    def delete_account(self, search):  # удалить счет из бд
-        self.db.delete_acc(search)
+    def delete_account(self):  # удалить счет из бд
+        for selection_item in self.tree.selection():
+            self.db.a.execute('''DELETE FROM account WHERE id=?''', (self.tree.set(selection_item, '#1')))
+        self.db.conn.commit()
         self.view_acc_data()
 
 class DB:
@@ -262,9 +264,6 @@ class DB:
         self.a.execute('''UPDATE account SET money = money - ? WHERE name = ?''', (summ, account_name))
         self.account.commit()
 
-    def delete_acc(self, search): #удалить счет
-        self.a.execute('DELETE FROM account WHERE name = ?', (search,))
-        self.account.commit()
 
 if __name__ == "__main__":
     root = tk.Tk()
