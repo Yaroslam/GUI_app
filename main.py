@@ -174,12 +174,13 @@ class Account(tk.Toplevel):
         self.geometry('650x450+400+300')
         self.resizable(False, False)
 
-        self.tree = ttk.Treeview(self, columns=('name', 'balance'), height=15, show='headings')
+        self.tree = ttk.Treeview(self, columns=('ID', 'name', 'balance'), height=15, show='headings')
 
-
+        self.tree.column('ID', width=30, anchor=tk.CENTER)
         self.tree.column('name', width=365, anchor=tk.CENTER)
         self.tree.column('balance', width=150, anchor=tk.CENTER)
 
+        self.tree.heading('ID', text='ID')
         self.tree.heading('name', text='счет')
         self.tree.heading('balance', text='баланс')
 
@@ -225,30 +226,6 @@ class Account(tk.Toplevel):
     def delete_account(self, search):  # удалить счет из бд
         self.db.delete_acc(search)
         self.view_acc_data()
-
-
-#
-# class Goal(tk.Toplevel):
-#     def __init__(self):  # конструктор
-#         super().__init__(root)
-#         self.init_goal()
-#         self.db = db
-#
-#     def init_goal(self):
-#         self.goal_space = tk.Canvas(bg='#d7d8e0',width=650)
-#
-#         self.add_goal_btn = ttk.Button(self, text='create goal')
-#         self.add_goal_btn.pack()
-#
-#         self.del_goal_btn = ttk.Button(self, text='delete goal')
-#         self.del_goal_btn.pack()
-#
-#         self.goal_size = ttk.Entry()
-#         self.goal_size.pack()
-#
-#         self.del_goal_entry = ttk.Entry()
-#         self.del_goal_entry.pack()
-
 
 class DB:
     def __init__(self):  # создание бд
