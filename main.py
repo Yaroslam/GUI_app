@@ -1,4 +1,5 @@
 import sqlalchemy as sqa
+from sqlalchemy.orm import Session
 import tkinter as tk
 from tkinter import ttk
 import sqlite3
@@ -229,45 +230,76 @@ class Account(tk.Toplevel):
         self.db.conn.commit()
         self.view_acc_data()
 
-class DB:
-    def __init__(self):  # создание бд
-        self.account = sqlite3.connect('account.db')
-        self.conn = sqlite3.connect('finance.db')
-        self.a = self.account.cursor()
-        self.c = self.conn.cursor()
-        self.c.execute(
-            '''CREATE TABLE IF NOT EXISTS finance (id integer primary key, description text, costs integer)''')
-        self.a.execute(
-            '''CREATE TABLE IF NOT EXISTS account(id integer primary key, name text, money integer)''')
-        self.conn.commit()
-        self.account.commit()
+# class DB:
+#     def __init__(self):  # создание бд
+#         self.account = sqlite3.connect('account.db')
+#         self.conn = sqlite3.connect('finance.db')
+#         self.a = self.account.cursor()
+#         self.c = self.conn.cursor()
+#         self.c.execute(
+#             '''CREATE TABLE IF NOT EXISTS finance (id integer primary key, description text, costs integer)''')
+#         self.a.execute(
+#             '''CREATE TABLE IF NOT EXISTS account(id integer primary key, name text, money integer)''')
+#         self.conn.commit()
+#         self.account.commit()
+#
+#     def insert_data(self, description, costs): #добалвние данных в бд
+#         self.c.execute('''INSERT INTO finance(description, costs) VALUES (?, ?)''',
+#                        (description, costs))
+#         self.conn.commit()
+#
+#     def delete_data(self, search): #удаление данных по вводимому значению
+#         self.c.execute('DELETE FROM finance WHERE description = ?',(search,))
+#         self.conn.commit()
+#
+#     def delete_all(self): #удаление бд
+#         self.c.execute('''DROP TABLE finance''')
+#         self.a.execute('''DROP TABLE account''')
+#
+#     def insert_account(self, name, money): #добавление данных
+#         self.a.execute('''INSERT INTO account(name, money) VALUES (?, ?)''',
+#                        (name, money))
+#         self.account.commit()
+#
+#     def minus_money_on_acc(self, summ, account_name): #редактирование счета
+#         self.a.execute('''UPDATE account SET money = money - ? WHERE name = ?''', (summ, account_name))
+#         self.account.commit()
 
-    def insert_data(self, description, costs): #добалвние данных в бд
-        self.c.execute('''INSERT INTO finance(description, costs) VALUES (?, ?)''',
-                       (description, costs))
-        self.conn.commit()
+class acc_db():
+    def __init__(self):
+        self.metadata = sqa.MetaData()
+        self.engine = sqa.create_engine() #не работает
+        self.acc_table = sqa.Table(
+            'acc_db', self.metadata,
+            sqa.Column('id', sqa.Integer(), primary_key=True),
+            sqa.Column('name', sqa.String()),
+            sqa.Column('money', sqa.Integer()),
+            )
+        self.metadata.create_all(self.engine)
+        self.conn = self.engine.connect()
+        self.insert = sqa.insert(self.acc_table)
 
-    def delete_data(self, search): #удаление данных по вводимому значению
-        self.c.execute('DELETE FROM finance WHERE description = ?',(search,))
-        self.conn.commit()
 
-    def delete_all(self): #удаление бд
-        self.c.execute('''DROP TABLE finance''')
-        self.a.execute('''DROP TABLE account''')
+    def insert(self, get_name, get_money):
+        self.conn.execute(self.insert,
+                          name=get_name,
+                          money=get_money
+                        )
 
-    def insert_account(self, name, money): #добавление данных
-        self.a.execute('''INSERT INTO account(name, money) VALUES (?, ?)''',
-                       (name, money))
-        self.account.commit()
 
-    def minus_money_on_acc(self, summ, account_name): #редактирование счета
-        self.a.execute('''UPDATE account SET money = money - ? WHERE name = ?''', (summ, account_name))
-        self.account.commit()
+
+
+
+
+
+
+
+
 
 
 if __name__ == "__main__":
     root = tk.Tk()
-    db = DB()
+    db = acc_db()
     app = Main(root)
     app.pack()
     root.title("Household finance")
