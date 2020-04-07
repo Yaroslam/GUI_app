@@ -9,7 +9,7 @@ class Main(tk.Frame): #конструктор класса
     def __init__(self, root):
         super().__init__(root)
         self.init_main()
-        self.db = db
+        self.db = fin_db
         self.view_records()
         self.view_state()
 
@@ -38,26 +38,23 @@ class Main(tk.Frame): #конструктор класса
         if description == '' or description == " ":
             pass
         else:
-            self.db.insert_data(description, costs)
+            self.db.insert_rec(description, costs)
             self.view_records()
             self.view_state()
 
     def delete_record(self, search): #удаление данных о тратах с главного окна
-        self.db.delete_data(search)
+        self.db.delete_rec(search)
         self.stats_field.delete("all")
         self.view_records()
         self.view_state()
 
-    def delete_all_records(self): #удаление всех данных о расходах
-        self.db.delete_all()
-        self.stats_field.delete("all")
 
     def view_state(self): # отображение статей расходов
-        state_mass = self.db.c.execute('''SELECT description FROM finance''').fetchall()
+        state_mass = self.db.select_descrip_recs()
         text_x0 = 300
         text_y0 = 20
         for i, m in enumerate(state_mass):
-            self.stats_field.create_text(text_x0, text_y0, text = m, fill = COLORS[i])
+            self.stats_field.create_text(text_x0, text_y0, text = str(m), fill = COLORS[i])
             if text_y0 < 300:
                 text_y0 += 50
             else:
@@ -65,14 +62,14 @@ class Main(tk.Frame): #конструктор класса
                 text_y0=20
 
     def view_records(self):   #отрисовка диаграмммы
-        summ = self.db.c.execute('''SELECT SUM(costs) FROM finance''').fetchone()
-        money_mass = self.db.c.execute('''SELECT costs FROM finance''').fetchall()
+        summ = self.db.sel_sum()
+        money_mass = self.db.select_cost_recs()
         end = 0
         if len(money_mass) == 1:
             self.stats_field.create_oval(20, 20, 200, 200, fill=COLORS[0])
         else:
             for i, m in enumerate(money_mass):
-                ext = 360 * m[0] / summ[0]
+                ext = 360 * m[0] / 5
                 self.stats_field.create_arc(20, 20, 200, 200,start=end, extent=ext, fill=COLORS[i])
                 end += ext
 
@@ -107,10 +104,6 @@ class Destroy(tk.Toplevel):
         btn_delete.place(x=220, y=170)
         btn_delete.bind('<Button-1>', lambda event: self.view.delete_record(self.enter_destroy_position.get()))
 
-        btn_delete_all = ttk.Button(self, text='Удалить все')
-        btn_delete_all.place(x=140, y=170)
-        btn_delete_all.bind('<Button-1>', lambda event: self.view.delete_all_records())
-
         btn_exit = ttk.Button(self, text='Закрыть', command=self.destroy)
         btn_exit.place(x=300, y=170)
 
@@ -121,7 +114,7 @@ class Destroy(tk.Toplevel):
 class Recount(tk.Toplevel):
     def __init__(self): #конструктор
         super().__init__(root)
-        self.db = db
+        self.acc_db = acc_db
         self.init_child()
         self.view = app
 
@@ -143,7 +136,8 @@ class Recount(tk.Toplevel):
         self.entry_money = ttk.Entry(self)
         self.entry_money.place(x=200, y=110)
 
-        self.choose_acc_box = ttk.Combobox(self, values=self.db.a.execute('''SELECT name FROM account''').fetchall())
+        sel = self.acc_db.acc_table.select()
+        self.choose_acc_box = ttk.Combobox(self, values=self.acc_db.conn.execute(sel).fetchall())
         self.choose_acc_box.place(x=200, y=80)
 
         btn_cancel = ttk.Button(self, text='Закрыть', command=self.destroy)
@@ -161,7 +155,7 @@ class Recount(tk.Toplevel):
 
     def recount(self, name_state, money, name_acc):
         self.view.records(name_state, money)
-        self.db.minus_money_on_acc(money,name_acc)
+        self.acc_db.update_rec(money,name_acc)
 
 
 
@@ -170,7 +164,7 @@ class Account(tk.Toplevel):
     def __init__(self): #конструктор
         super().__init__(root)
         self.init_account()
-        self.db = db
+        self.acc_db = acc_db
         self.view_acc_data()
 
     def init_account(self): #главная функция
@@ -216,18 +210,18 @@ class Account(tk.Toplevel):
         if name == '' or name == " ":
             pass
         else:
-            self.db.insert_account(name, money)
+            self.acc_db.insert_rec(name, money)
             self.view_acc_data()
 
     def view_acc_data(self):  # отрисовка счетов
-        self.db.a.execute('''SELECT * FROM account''')
+        sel = self.acc_db.acc_table.select()
         [self.tree.delete(i) for i in self.tree.get_children()]
-        [self.tree.insert('', 'end', values=row) for row in self.db.a.fetchall()]
+        [self.tree.insert('', 'end', values=row) for row in self.acc_db.conn.execute(sel)]
 
     def delete_account(self):  # удалить счет из бд
         for selection_item in self.tree.selection():
-            self.db.a.execute('''DELETE FROM account WHERE id=?''', (self.tree.set(selection_item, '#1')))
-        self.db.conn.commit()
+            delt = sqa.delete(self.acc_db.acc_table).where(self.acc_db.acc_table.c.id.like(self.tree.set(selection_item, '#1')))
+            self.acc_db.conn.execute(delt)
         self.view_acc_data()
 
 # class DB:
@@ -265,41 +259,72 @@ class Account(tk.Toplevel):
 #         self.a.execute('''UPDATE account SET money = money - ? WHERE name = ?''', (summ, account_name))
 #         self.account.commit()
 
-class acc_db():
+class ACC_DB():
     def __init__(self):
-        self.metadata = sqa.MetaData()
-        self.engine = sqa.create_engine() #не работает
-        self.acc_table = sqa.Table(
-            'acc_db', self.metadata,
-            sqa.Column('id', sqa.Integer(), primary_key=True),
-            sqa.Column('name', sqa.String()),
-            sqa.Column('money', sqa.Integer()),
-            )
-        self.metadata.create_all(self.engine)
+        self.engine = sqa.create_engine('sqlite:///acc.db')
         self.conn = self.engine.connect()
-        self.insert = sqa.insert(self.acc_table)
+        self.data = sqa.MetaData(self.engine)
+        self.acc_table = sqa.Table('acc', self.data,
+                    sqa.Column('id', sqa.Integer(), primary_key=True),
+                    sqa.Column('name', sqa.String()),
+                    sqa.Column('money', sqa.Integer())
+                    )
+        self.data.create_all(self.engine)
 
+    def insert_rec(self, name_value, money_value):
+        ins = self.acc_table.insert().values(
+            name = name_value,
+            money = money_value
+        )
+        self.conn.execute(ins)
 
-    def insert(self, get_name, get_money):
-        self.conn.execute(self.insert,
-                          name=get_name,
-                          money=get_money
-                        )
+    def update_rec(self, name_value, money_value):
+        upd = sqa.update(self.acc_table).where(self.acc_table.c.name == name_value).values(money=self.acc_table.c.money
+                                                                                                 -money_value)
+        self.conn.execute(upd)
 
+class FIN_DB():
+    def __init__(self):
+        self.engine = sqa.create_engine('sqlite:///fin.db')
+        self.conn = self.engine.connect()
+        self.data = sqa.MetaData(self.engine)
+        self.fin_table = sqa.Table('fin', self.data,
+                    sqa.Column('id', sqa.Integer, primary_key=True),
+                    sqa.Column('description', sqa.String()),
+                    sqa.Column('cost', sqa.Integer())
+                    )
+        self.data.create_all(self.engine)
 
+    def insert_rec(self, descrip_value, cost_value):
+        ins = self.fin_table.insert().values(
+            description=descrip_value,
+            cost=cost_value
+        )
+        self.conn.execute(ins)
 
+    def delete_rec(self, value):
+        delt = sqa.delete(self.fin_table).where(self.fin_table.c.description.like(value))
+        self.conn.execute(delt)
 
+    def select_sum(self):
+        pass
 
+    def select_descrip_recs(self):
+        sel = sqa.select([self.fin_table.c.description])
+        return self.conn.execute(sel).fetchall()
 
+    def select_cost_recs(self):
+        sel = sqa.select([self.fin_table.c.cost])
+        return self.conn.execute(sel).fetchall()
 
-
-
-
+    def sel_sum(self):
+        return sqa.func.sum(self.fin_table.c.cost)
 
 
 if __name__ == "__main__":
     root = tk.Tk()
-    db = acc_db()
+    acc_db = ACC_DB()
+    fin_db =FIN_DB()
     app = Main(root)
     app.pack()
     root.title("Household finance")
