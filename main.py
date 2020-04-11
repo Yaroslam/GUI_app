@@ -54,7 +54,7 @@ class Main(tk.Frame): #конструктор класса
         text_x0 = 300
         text_y0 = 20
         for i, m in enumerate(state_mass):
-            self.stats_field.create_text(text_x0, text_y0, text = str(m), fill = COLORS[i])
+            self.stats_field.create_text(text_x0, text_y0, text = self.delete_symbols(m), fill = COLORS[i])
             if text_y0 < 300:
                 text_y0 += 50
             else:
@@ -72,6 +72,14 @@ class Main(tk.Frame): #конструктор класса
                 ext = 360 * m[0] / 5
                 self.stats_field.create_arc(20, 20, 200, 200,start=end, extent=ext, fill=COLORS[i])
                 end += ext
+
+    def delete_symbols(self, row):
+        row = str(row).replace(str(row)[-2], ' ')
+        row = str(row).replace(str(row)[1], ' ')
+        row = str(row).replace("(", '')
+        row = str(row).replace(")", '')
+        row = str(row).replace(',', '')
+        return str(row)
 
 
     def open_dialog(self): #открыть окно добавление расходов
@@ -125,7 +133,7 @@ class Recount(tk.Toplevel):
 
         label_description = tk.Label(self, text='Наименование:')
         label_description.place(x=50, y=50)
-        label_select = tk.Label(self, text='Статья дохода\расхода:')
+        label_select = tk.Label(self, text='выберите счет')
         label_select.place(x=50, y=80)
         label_sum = tk.Label(self, text='Сумма:')
         label_sum.place(x=50, y=110)
@@ -155,7 +163,7 @@ class Recount(tk.Toplevel):
 
     def recount(self, name_state, money, name_acc):
         self.view.records(name_state, money)
-        self.acc_db.update_rec(money,name_acc)
+        self.acc_db.update_rec(name_acc,money)
 
 
 
@@ -214,9 +222,11 @@ class Account(tk.Toplevel):
             self.view_acc_data()
 
     def view_acc_data(self):  # отрисовка счетов
+
         sel = self.acc_db.acc_table.select()
         [self.tree.delete(i) for i in self.tree.get_children()]
-        [self.tree.insert('', 'end', values=row) for row in self.acc_db.conn.execute(sel)]
+        for row in self.acc_db.conn.execute(sel):
+            self.tree.insert('', 'end', values=self.__delete_symbols(row))
 
     def delete_account(self):  # удалить счет из бд
         for selection_item in self.tree.selection():
@@ -224,40 +234,16 @@ class Account(tk.Toplevel):
             self.acc_db.conn.execute(delt)
         self.view_acc_data()
 
-# class DB:
-#     def __init__(self):  # создание бд
-#         self.account = sqlite3.connect('account.db')
-#         self.conn = sqlite3.connect('finance.db')
-#         self.a = self.account.cursor()
-#         self.c = self.conn.cursor()
-#         self.c.execute(
-#             '''CREATE TABLE IF NOT EXISTS finance (id integer primary key, description text, costs integer)''')
-#         self.a.execute(
-#             '''CREATE TABLE IF NOT EXISTS account(id integer primary key, name text, money integer)''')
-#         self.conn.commit()
-#         self.account.commit()
-#
-#     def insert_data(self, description, costs): #добалвние данных в бд
-#         self.c.execute('''INSERT INTO finance(description, costs) VALUES (?, ?)''',
-#                        (description, costs))
-#         self.conn.commit()
-#
-#     def delete_data(self, search): #удаление данных по вводимому значению
-#         self.c.execute('DELETE FROM finance WHERE description = ?',(search,))
-#         self.conn.commit()
-#
-#     def delete_all(self): #удаление бд
-#         self.c.execute('''DROP TABLE finance''')
-#         self.a.execute('''DROP TABLE account''')
-#
-#     def insert_account(self, name, money): #добавление данных
-#         self.a.execute('''INSERT INTO account(name, money) VALUES (?, ?)''',
-#                        (name, money))
-#         self.account.commit()
-#
-#     def minus_money_on_acc(self, summ, account_name): #редактирование счета
-#         self.a.execute('''UPDATE account SET money = money - ? WHERE name = ?''', (summ, account_name))
-#         self.account.commit()
+    def __delete_symbols(self, row):
+        start = str(row).find(',')
+        end = str(row).rfind(',')
+        row = str(row).replace(str(row)[start + 2], ' ')
+        row = str(row).replace(str(row)[end - 1], ' ')
+        row = str(row).replace("(", '')
+        row = str(row).replace(")", '')
+        row = str(row).replace(',', '')
+        return str(row)
+
 
 class ACC_DB():
     def __init__(self):
