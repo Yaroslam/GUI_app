@@ -69,7 +69,7 @@ class Main(tk.Frame): #конструктор класса
             self.stats_field.create_oval(20, 20, 200, 200, fill=COLORS[0])
         else:
             for i, m in enumerate(money_mass):
-                ext = 360 * m[0] / 5
+                ext = 360 * m[0] / summ
                 self.stats_field.create_arc(20, 20, 200, 200,start=end, extent=ext, fill=COLORS[i])
                 end += ext
 
@@ -144,8 +144,8 @@ class Recount(tk.Toplevel):
         self.entry_money = ttk.Entry(self)
         self.entry_money.place(x=200, y=110)
 
-        sel = self.acc_db.acc_table.select()
-        self.choose_acc_box = ttk.Combobox(self, values=self.acc_db.conn.execute(sel).fetchall())
+        sel = self.acc_db.select_name()
+        self.choose_acc_box = ttk.Combobox(self, values=sel)
         self.choose_acc_box.place(x=200, y=80)
 
         btn_cancel = ttk.Button(self, text='Закрыть', command=self.destroy)
@@ -264,6 +264,14 @@ class ACC_DB():
         )
         self.conn.execute(ins)
 
+    def select_name(self):
+        rtrn_mass = []
+        sel = sqa.select([self.acc_table.c.name])
+        select_mass = self.conn.execute(sel).fetchall()
+        for item in select_mass:
+            rtrn_mass.append(item[0])
+        return rtrn_mass
+
     def update_rec(self, name_value, money_value):
         upd = sqa.update(self.acc_table).where(self.acc_table.c.name == name_value).values(money=self.acc_table.c.money
                                                                                                  -money_value)
@@ -304,7 +312,12 @@ class FIN_DB():
         return self.conn.execute(sel).fetchall()
 
     def sel_sum(self):
-        return sqa.func.sum(self.fin_table.c.cost)
+        summ = 0
+        sel = sqa.select([self.fin_table.c.cost])
+        summ_mass = self.conn.execute(sel).fetchall()
+        for i in summ_mass:
+            summ+=i[0]
+        return summ
 
 
 if __name__ == "__main__":
