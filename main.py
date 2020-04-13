@@ -74,8 +74,8 @@ class Main(tk.Frame): #конструктор класса
                 end += ext
 
     def delete_symbols(self, row):
-        row = str(row).replace(str(row)[-2], ' ')
-        row = str(row).replace(str(row)[1], ' ')
+        row = str(row).replace(str(row)[-2], '')
+        row = str(row).replace(str(row)[1], '')
         row = str(row).replace("(", '')
         row = str(row).replace(")", '')
         row = str(row).replace(',', '')
@@ -237,8 +237,8 @@ class Account(tk.Toplevel):
     def __delete_symbols(self, row):
         start = str(row).find(',')
         end = str(row).rfind(',')
-        row = str(row).replace(str(row)[start + 2], ' ')
-        row = str(row).replace(str(row)[end - 1], ' ')
+        row = str(row).replace(str(row)[start + 2], '')
+        row = str(row).replace(str(row)[end - 1], '')
         row = str(row).replace("(", '')
         row = str(row).replace(")", '')
         row = str(row).replace(',', '')
