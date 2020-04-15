@@ -1,8 +1,6 @@
 import sqlalchemy as sqa
-from sqlalchemy.orm import Session
 import tkinter as tk
 from tkinter import ttk
-import sqlite3
 from const import COLORS
 
 class Main(tk.Frame): #конструктор класса
@@ -54,7 +52,7 @@ class Main(tk.Frame): #конструктор класса
         text_x0 = 300
         text_y0 = 20
         for i, m in enumerate(state_mass):
-            self.stats_field.create_text(text_x0, text_y0, text = str(m), fill = COLORS[i])
+            self.stats_field.create_text(text_x0, text_y0, text = self.delete_symbols(m), fill = COLORS[i])
             if text_y0 < 300:
                 text_y0 += 50
             else:
@@ -69,9 +67,17 @@ class Main(tk.Frame): #конструктор класса
             self.stats_field.create_oval(20, 20, 200, 200, fill=COLORS[0])
         else:
             for i, m in enumerate(money_mass):
-                ext = 360 * m[0] / 5
+                ext = 360 * m[0] / summ
                 self.stats_field.create_arc(20, 20, 200, 200,start=end, extent=ext, fill=COLORS[i])
                 end += ext
+
+    def delete_symbols(self, row): #очистка отобрадаемых данных от лишних символом
+        row = str(row).replace(str(row)[-2], '')
+        row = str(row).replace(str(row)[1], '')
+        row = str(row).replace("(", '')
+        row = str(row).replace(")", '')
+        row = str(row).replace(',', '')
+        return str(row)
 
 
     def open_dialog(self): #открыть окно добавление расходов
@@ -80,10 +86,10 @@ class Main(tk.Frame): #конструктор класса
     def open_destroy(self): #открыть окно удаление расходов
         Destroy()
 
-    def open_account(self):
+    def open_account(self): #открыть окно счетов
         Account()
 
-class Destroy(tk.Toplevel):
+class Destroy(tk.Toplevel): #око удаления
     def __init__(self): #конструктор
         super().__init__(root)
         self.init_destroy()
@@ -111,7 +117,7 @@ class Destroy(tk.Toplevel):
         self.focus_set()
 
 
-class Recount(tk.Toplevel):
+class Recount(tk.Toplevel): #окно добавления
     def __init__(self): #конструктор
         super().__init__(root)
         self.acc_db = acc_db
@@ -125,7 +131,7 @@ class Recount(tk.Toplevel):
 
         label_description = tk.Label(self, text='Наименование:')
         label_description.place(x=50, y=50)
-        label_select = tk.Label(self, text='Статья дохода\расхода:')
+        label_select = tk.Label(self, text='выберите счет')
         label_select.place(x=50, y=80)
         label_sum = tk.Label(self, text='Сумма:')
         label_sum.place(x=50, y=110)
@@ -136,8 +142,8 @@ class Recount(tk.Toplevel):
         self.entry_money = ttk.Entry(self)
         self.entry_money.place(x=200, y=110)
 
-        sel = self.acc_db.acc_table.select()
-        self.choose_acc_box = ttk.Combobox(self, values=self.acc_db.conn.execute(sel).fetchall())
+        sel = self.acc_db.select_name()
+        self.choose_acc_box = ttk.Combobox(self, values=sel)
         self.choose_acc_box.place(x=200, y=80)
 
         btn_cancel = ttk.Button(self, text='Закрыть', command=self.destroy)
@@ -153,14 +159,14 @@ class Recount(tk.Toplevel):
         self.grab_set()
         self.focus_set()
 
-    def recount(self, name_state, money, name_acc):
+    def recount(self, name_state, money, name_acc): #отрисовка измененных данных наглавном окне и измененеие счета
         self.view.records(name_state, money)
-        self.acc_db.update_rec(money,name_acc)
+        self.acc_db.update_rec(name_acc,money)
 
 
 
 
-class Account(tk.Toplevel):
+class Account(tk.Toplevel): #окно счетов
     def __init__(self): #конструктор
         super().__init__(root)
         self.init_account()
@@ -214,9 +220,11 @@ class Account(tk.Toplevel):
             self.view_acc_data()
 
     def view_acc_data(self):  # отрисовка счетов
+
         sel = self.acc_db.acc_table.select()
         [self.tree.delete(i) for i in self.tree.get_children()]
-        [self.tree.insert('', 'end', values=row) for row in self.acc_db.conn.execute(sel)]
+        for row in self.acc_db.conn.execute(sel):
+            self.tree.insert('', 'end', values=self.__delete_symbols(row))
 
     def delete_account(self):  # удалить счет из бд
         for selection_item in self.tree.selection():
@@ -224,43 +232,19 @@ class Account(tk.Toplevel):
             self.acc_db.conn.execute(delt)
         self.view_acc_data()
 
-# class DB:
-#     def __init__(self):  # создание бд
-#         self.account = sqlite3.connect('account.db')
-#         self.conn = sqlite3.connect('finance.db')
-#         self.a = self.account.cursor()
-#         self.c = self.conn.cursor()
-#         self.c.execute(
-#             '''CREATE TABLE IF NOT EXISTS finance (id integer primary key, description text, costs integer)''')
-#         self.a.execute(
-#             '''CREATE TABLE IF NOT EXISTS account(id integer primary key, name text, money integer)''')
-#         self.conn.commit()
-#         self.account.commit()
-#
-#     def insert_data(self, description, costs): #добалвние данных в бд
-#         self.c.execute('''INSERT INTO finance(description, costs) VALUES (?, ?)''',
-#                        (description, costs))
-#         self.conn.commit()
-#
-#     def delete_data(self, search): #удаление данных по вводимому значению
-#         self.c.execute('DELETE FROM finance WHERE description = ?',(search,))
-#         self.conn.commit()
-#
-#     def delete_all(self): #удаление бд
-#         self.c.execute('''DROP TABLE finance''')
-#         self.a.execute('''DROP TABLE account''')
-#
-#     def insert_account(self, name, money): #добавление данных
-#         self.a.execute('''INSERT INTO account(name, money) VALUES (?, ?)''',
-#                        (name, money))
-#         self.account.commit()
-#
-#     def minus_money_on_acc(self, summ, account_name): #редактирование счета
-#         self.a.execute('''UPDATE account SET money = money - ? WHERE name = ?''', (summ, account_name))
-#         self.account.commit()
+    def __delete_symbols(self, row): #очистка выводимых значений от ненужных символов
+        start = str(row).find(',')
+        end = str(row).rfind(',')
+        row = str(row).replace(str(row)[start + 2], '')
+        row = str(row).replace(str(row)[end - 1], '')
+        row = str(row).replace("(", '')
+        row = str(row).replace(")", '')
+        row = str(row).replace(',', '')
+        return str(row)
 
-class ACC_DB():
-    def __init__(self):
+
+class ACC_DB(): #класс для работы с БД счетов
+    def __init__(self): #конструктор
         self.engine = sqa.create_engine('sqlite:///acc.db')
         self.conn = self.engine.connect()
         self.data = sqa.MetaData(self.engine)
@@ -271,20 +255,28 @@ class ACC_DB():
                     )
         self.data.create_all(self.engine)
 
-    def insert_rec(self, name_value, money_value):
+    def insert_rec(self, name_value, money_value): #добавить значение
         ins = self.acc_table.insert().values(
             name = name_value,
             money = money_value
         )
         self.conn.execute(ins)
 
-    def update_rec(self, name_value, money_value):
+    def select_name(self): #выбор названий всех счетов
+        rtrn_mass = []
+        sel = sqa.select([self.acc_table.c.name])
+        select_mass = self.conn.execute(sel).fetchall()
+        for item in select_mass:
+            rtrn_mass.append(item[0])
+        return rtrn_mass
+
+    def update_rec(self, name_value, money_value): #изменение баланса счет name_value на -new_walue едениц
         upd = sqa.update(self.acc_table).where(self.acc_table.c.name == name_value).values(money=self.acc_table.c.money
                                                                                                  -money_value)
         self.conn.execute(upd)
 
-class FIN_DB():
-    def __init__(self):
+class FIN_DB(): #класс для работы с БД статей расходов
+    def __init__(self): #конструктор
         self.engine = sqa.create_engine('sqlite:///fin.db')
         self.conn = self.engine.connect()
         self.data = sqa.MetaData(self.engine)
@@ -295,30 +287,33 @@ class FIN_DB():
                     )
         self.data.create_all(self.engine)
 
-    def insert_rec(self, descrip_value, cost_value):
+    def insert_rec(self, descrip_value, cost_value): #добавить значение
         ins = self.fin_table.insert().values(
             description=descrip_value,
             cost=cost_value
         )
         self.conn.execute(ins)
 
-    def delete_rec(self, value):
+    def delete_rec(self, value): #удалить запись
         delt = sqa.delete(self.fin_table).where(self.fin_table.c.description.like(value))
         self.conn.execute(delt)
 
-    def select_sum(self):
-        pass
 
-    def select_descrip_recs(self):
+    def select_descrip_recs(self): #выбор описаний всех статей расходов
         sel = sqa.select([self.fin_table.c.description])
         return self.conn.execute(sel).fetchall()
 
-    def select_cost_recs(self):
+    def select_cost_recs(self): #выбор всех стоимостей статей расходов
         sel = sqa.select([self.fin_table.c.cost])
         return self.conn.execute(sel).fetchall()
 
-    def sel_sum(self):
-        return sqa.func.sum(self.fin_table.c.cost)
+    def sel_sum(self):#выбрать сумму стоимостей всех статей расходов
+        summ = 0
+        sel = sqa.select([self.fin_table.c.cost])
+        summ_mass = self.conn.execute(sel).fetchall()
+        for i in summ_mass:
+            summ+=i[0]
+        return summ
 
 
 if __name__ == "__main__":
